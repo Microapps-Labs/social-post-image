@@ -93,7 +93,7 @@ export function Sidebar() {
 
       <div className={styles.footer}>
         <p className={styles.footerText}>
-          Create beautiful Swiss-style posters for social media.
+          Edit posters and export them as PNG images.
         </p>
       </div>
     </aside>

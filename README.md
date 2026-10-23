@@ -1,110 +1,88 @@
 # social-post-image
 
-Generate beautiful Swiss-style social media images for LinkedIn, Twitter, Instagram, and blog posts. Built with Next.js, powered by a declarative visual language.
+A browser editor for social-media posters. Choose a layout, edit its text and
+layers, change the theme or canvas size, and export a PNG.
 
-**[Live Demo →](https://social-post-image.vercel.app)**
+![The editor with a poster, editable layers, themes and PNG export](docs/demo/editor.png)
 
-## Features
+The screenshot shows the running app with sample text. The same session
+[exported this poster](docs/demo/poster.png) and saved the design to a local
+MongoDB instance. No model calls were used. See [capture details](docs/demo/README.md).
 
-- **8 Poster Presets** — Statement, Quote (Vignelli), Typography Showcase, Hot Take, Announcement, Showcase, Content Grid, Feature
-- **13 Themes** — Swiss Red, Klein Blue, Monochrome, Vignelli Gold, Midnight Gold, Brutalist Concrete, Tech Terminal, and more
-- **5 Canvas Sizes** — LinkedIn portrait/square, Instagram portrait/square, Twitter cards
-- **Declarative API** — Define posters as composable JSON structures using primitives (text, box, stack, grid, divider, spacer)
-- **Live Preview** — Real-time editing with sidebar controls
-- **One-Click Export** — Download as PNG via `html-to-image`
-- **Swiss Design Rules** — Left-aligned typography, limited color palettes, strong hierarchy, grid-based layouts
+## Run locally
 
-## Quick Start
+You need Node.js 20.19 or later for the MongoDB driver, Bun for the checked-in
+lockfile, and MongoDB for saved projects. The captured workflow used Bun 1.4.2
+and MongoDB 8.0.
 
-```bash
-# Install
-pnpm install
-
-# Set up env
+```sh
+git clone https://github.com/Microapps-Labs/social-post-image.git
+cd social-post-image
+bun install --frozen-lockfile
 cp .env.local.example .env.local
-# Edit .env.local with your AUTH_PASSWORD and AUTH_SECRET
-
-# Run
-pnpm dev
 ```
 
-## Presets
+Edit `.env.local`. Set `AUTH_PASSWORD` to a password of your choice and generate
+`AUTH_SECRET` with `openssl rand -base64 32`. Set `MONGODB_URI` to your database.
+For a local-only database, Docker is one option:
 
-| Preset | Description |
-|--------|-------------|
-| `createStatementPoster` | Simple bold headline poster |
-| `createVignelliQuote` | Quote with emphasis phrase, Massimo Vignelli style |
-| `createTypographyShowcase` | Large letterform typography poster |
-| `createHotTakePoster` | Contrarian statement / unpopular opinion |
-| `createAnnouncementPoster` | Article or launch announcement |
-| `createShowcasePoster` | Primary/secondary headings with info columns |
-| `createContentGridPoster` | Content blocks in 2-column grid layout |
-| `createFeatureShowcase` | Giant keyword poster |
-
-## Declarative Language
-
-Posters are defined as `PosterDefinition` objects using composable primitives:
-
-```typescript
-const poster: PosterDefinition = {
-  canvas: { preset: 'linkedin-portrait' },
-  theme: { preset: 'swiss-red' },
-  root: {
-    type: 'stack',
-    direction: 'vertical',
-    gap: 6,
-    children: [
-      { type: 'text', content: 'HEADLINE', variant: 'hero', color: 'accent' },
-      { type: 'text', content: 'Supporting text', variant: 'subhead' },
-      { type: 'spacer', size: 'flex' },
-      { type: 'divider' },
-      { type: 'footer', author: 'Name', seriesNumber: 1 }
-    ]
-  }
-};
+```sh
+docker run --detach --name social-post-image-mongo \
+  --publish 127.0.0.1:27017:27017 \
+  --volume social-post-image-data:/data/db \
+  mongo:8.0
 ```
 
-### Primitives
+Start the app:
 
-| Type | Description |
-|------|-------------|
-| `text` | Typography with variants (hero, display, headline, title, subhead, body, label, meta) |
-| `box` | Container with padding, border, background color |
-| `stack` | Flexbox layout (vertical/horizontal) |
-| `grid` | CSS Grid with columns, rows, areas |
-| `divider` | Horizontal rule |
-| `spacer` | Empty space (fixed or flex) |
+```sh
+npm run dev -- --hostname 127.0.0.1
+```
 
-## Themes
+Open <http://localhost:3000>, sign in with `AUTH_PASSWORD`, then reload the editor
+once. The initial project-creation request can run before sign-in; reloading
+starts it with an authenticated session.
 
-| Theme | Style |
-|-------|-------|
-| `swiss-red` | Classic Swiss — light gray bg, red accent |
-| `klein-blue` | International style — white bg, Klein blue |
-| `monochrome` | Pure black & white |
-| `vignelli-gold` | Dark bg, gold accent |
-| `vignelli-cream` | Cream bg, crimson accent |
-| `neue-teal` | Teal bg, coral accent |
-| `orange-energy` | Warm white bg, orange accent |
-| `midnight-gold` | Dark luxury |
-| `forest-contrast` | Forest green bg, coral accent |
-| `brutalist-concrete` | Concrete gray bg, orange accent |
-| `tech-terminal` | Dark bg, green accent |
-| `paper-ink` | Editorial paper feel |
-| `swiss-red-inverted` | Red bg, white accent |
+## Make a poster
 
-## Tech Stack
+1. Choose a layout under **Presets**. Selecting a preset adds a design.
+2. Open **Design**, expand **Content**, and edit the text.
+3. Choose a canvas size and theme. Select a layer to adjust its properties.
+4. Click **Export PNG** to download the image.
 
-- **Next.js 14** with App Router
-- **TypeScript**
-- **html-to-image** for PNG export
-- **NextAuth** for password-protected access
-- **Zod** for schema validation
+Edits are saved to MongoDB after a short delay. The browser stores the current
+project ID locally. The editor can render and export without a database, but
+that does not save the project. Saving errors are currently silent, so confirm
+important work by reloading it.
 
-## Requirements
+## Optional text generation
 
-- Node.js >= 18
+The **Generate from post** panel uses a server-side `LLM_API_KEY`. The current
+implementation sends submitted text to Groq. Leave the key unset when using
+presets and manual editing only. Generation was not exercised in the captured
+workflow.
 
-## License
+## Build and implementation
 
-MIT
+```sh
+npm run build
+npm start
+```
+
+The development workflow above was exercised; a production build has not been
+qualified by this capture.
+
+The UI renders `PosterDefinition` objects built from text, boxes, stacks, grids
+and other nodes. Layout functions live in
+[components/composer/presets](components/composer/presets), editable fields in
+[schemas/presetSchemas.ts](schemas/presetSchemas.ts), and node types in
+[lib/types.ts](lib/types.ts). The application calls itself Swiss Content
+Generator in the UI.
+
+## Deployment limits
+
+Set explicit authentication values before hosting the app. The source includes
+shared development defaults, so copying the code alone does not configure a
+private deployment. The application uses one shared sign-in identity, not
+separate user accounts. This repository does not include a standalone license
+file.
